@@ -22,7 +22,7 @@ int connection_handler(int connection_fd)
 	close(connection_fd);
 	return 0;
 }
-int main(int argc, char **argv)
+int main(void)
 {
 	struct sockaddr_un address;
 	int socket_fd, connection_fd;

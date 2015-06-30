@@ -5,14 +5,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
-
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define PORT 4321
-int bt_connect(const char *bt_addr);
+#include "uds.h"
+
+void client_do(SSL *ssl, const char *sock_name);
 int create_socket(int port);
 void init_openssl(void);
 void cleanup_openssl();
@@ -21,18 +19,21 @@ void configure_context(SSL_CTX *ctx);
 
 int main(int argc, char **argv)
 {
-	int sock;
+	int sock, port;
 	SSL_CTX *ctx;
-
+	if (argc < 2) {
+		printf("Usage: %s [port] [sock name]\n", *argv);
+		return 0;
+	}
+	port = atoi(argv[1]);
 	init_openssl();
 	create_context(&ctx);
 	configure_context(ctx);
-	sock = create_socket(PORT);
+	sock = create_socket(port);
 	while (1) {
 		struct sockaddr_in addr;
 		socklen_t len = sizeof(addr);
 		SSL *ssl;
-		const char *reply = "test\n";
 		int client = accept(sock, (struct sockaddr *)&addr, &len);
 		if (client < 0) {
 			perror("could not accept client\n");
@@ -40,13 +41,10 @@ int main(int argc, char **argv)
 		}
 		ssl = SSL_new(ctx);
 		SSL_set_fd(ssl, client);
-		if (SSL_accept(ssl) <= 0) {
+		if (SSL_accept(ssl) <= 0)
 			ERR_print_errors_fp(stderr);
-		} else {
-			SSL_write(ssl, reply, strlen(reply));
-			int btsock = bt_connect("01:23:45:67:89:AB");
-			close(btsock);
-		}
+		else
+			client_do(ssl, argv[2]);
 		SSL_free(ssl);
 		close(client);
 	}
@@ -55,15 +53,19 @@ int main(int argc, char **argv)
 	EVP_cleanup();
 	return 0;
 }
-int bt_connect(const char *bt_addr)
+void client_do(SSL *ssl, const char *sock_name)
 {
-	struct sockaddr_rc addr = { 0 };
-	int sock;
-	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	addr.rc_family = AF_BLUETOOTH;
-	addr.rc_channel = 1;
-	str2ba(bt_addr, &addr.rc_bdaddr);
-	return connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+	char buffer[256];
+	int num, sock = uds_client_connect(sock_name);
+	while ((num = SSL_read(ssl, buffer, sizeof(buffer)) > 0)) {
+		buffer[num] = 0;
+		if (!strcmp(buffer, "exit"))
+			break;
+		write(sock, buffer, num);
+		num = read(sock, buffer, sizeof(buffer));
+		SSL_write(ssl, buffer, num);
+	}
+	close(sock);
 }
 int create_socket(int port)
 {
