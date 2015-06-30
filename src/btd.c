@@ -12,7 +12,7 @@ int bt_connect(const char *addr);
 void handle_client(int sock);
 
 #define SOCK_NAME "./bluetooth_sock"
-int main(int argc, char **argv)
+int main(void)
 {
 	return uds_server(SOCK_NAME, handle_client);
 }
@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 void handle_client(int uds)
 {
 	char buffer[256];
-	int bts, num = read(uds, buffer, sizeof(buffer));
+	int bts, num = recv(uds, buffer, sizeof(buffer), 0);
 	buffer[num] = 0;
 	bts = bt_connect(buffer);
 	if (bts >= 0)
@@ -30,16 +30,21 @@ void handle_client(int uds)
 		close(bts);
 		return;
 	}
-	write(uds, buffer, strlen(buffer));
-	while ((num = read(uds, buffer, sizeof(buffer))) > 0) {
-		buffer[num] = 0;
-		if (!strcmp(buffer, "exit"))
+	send(uds, buffer, strlen(buffer), 0);
+	while (1) {
+		if ((num = recv(uds, buffer, sizeof(buffer), 0)) <= 0) {
+			shutdown(bts, SHUT_WR);
 			break;
-		write(bts, buffer, num);
-		num = read(bts, buffer, sizeof(buffer));
-		write(uds, buffer, num);
+		}
+		send(bts, buffer, num, 0);
+		if ((num = recv(bts, buffer, sizeof(buffer), 0)) <= 0) {
+			shutdown(uds, SHUT_WR);
+			break;
+		}
+		send(uds, buffer, num, 0);
 	}
 	close(bts);
+	close(uds);
 }
 
 int bt_connect(const char *bt_addr)

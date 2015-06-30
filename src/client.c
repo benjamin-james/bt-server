@@ -41,16 +41,13 @@ int main(int argc, char **argv)
 		if (!input || !strcmp(input, "exit"))
 			break;
 		add_history(input);
-		write(sock, input, strlen(input));
+		send(sock, input, strlen(input), 0);
 		free(input);
 
-		num = read(sock, buffer, sizeof(buffer));
+		num = recv(sock, buffer, sizeof(buffer), 0);
 		buffer[num] = 0;
 		printf("%s\n", buffer);
 	}
-	num = snprintf(buffer, 256, "exit");
-	write(sock, buffer, num);
 	close(sock);
-
 	return 0;
 }

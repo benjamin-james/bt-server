@@ -1,15 +1,15 @@
 
 CC = cc
-CFLAGS = -W -Wall -Werror -ansi
+CFLAGS = -W -Wall -Werror
 
-all: bt-server btd server client
+all: tls-server btd server client
 
 tls-server: src/tls-server.c uds.o
-	$(CC) src/tls-server.c uds.o -o tls-server -lssl
+	$(CC) src/tls-server.c uds.o -o tls-server -lssl -lcrypto
 btd: src/btd.c uds.o
 	$(CC) $(CFLAGS) uds.o src/btd.c -o btd -lbluetooth
-server: src/server.c
-	$(CC) $(CFLAGS) src/server.c -o server
+server: src/server.c uds.o
+	$(CC) $(CFLAGS) uds.o src/server.c -o server
 client: src/client.c
 	$(CC) $(CFLAGS) src/client.c -o client -lreadline
 uds.o: src/uds.c
