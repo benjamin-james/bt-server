@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#define SOCK_NAME "./demo_socket"
 int connection_handler(int connection_fd)
 {
 	int nbytes = 1;
@@ -33,13 +34,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	unlink(*argv);
+	unlink(SOCK_NAME);
 
 	/* start with a clean address structure */
 	memset(&address, 0, sizeof(struct sockaddr_un));
 
 	address.sun_family = AF_UNIX;
-	sprintf(address.sun_path, "%s", *argv);
+	sprintf(address.sun_path, SOCK_NAME);
 
 	if (bind(socket_fd, (struct sockaddr *) &address, sizeof(struct sockaddr_un)) != 0) {
 		printf("bind() failed\n");
@@ -63,6 +64,6 @@ int main(int argc, char **argv)
 	}
 
 	close(socket_fd);
-	unlink(*argv);
+	unlink(SOCK_NAME);
 	return 0;
 }
