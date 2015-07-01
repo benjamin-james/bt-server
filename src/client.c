@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2) {
 		printf("Usage: %s [program]\n", *argv);
-		return 0;
+	        return 0;
 	}
 	sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {

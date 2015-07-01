@@ -2,8 +2,10 @@
 CC = cc
 CFLAGS = -W -Wall -Werror
 
-all: tls-server btd server client
+all: tls-server btd server client bt-server
 
+bt-server: src/bt-server.c
+	$(CC) $(CFLAGS) src/bt-server.c -o bt-server -lbluetooth
 tls-server: src/tls-server.c uds.o
 	$(CC) src/tls-server.c uds.o -o tls-server -lssl -lcrypto
 btd: src/btd.c uds.o
@@ -19,4 +21,5 @@ clean:
 	rm btd
 	rm server
 	rm client
+	rm tls-server
 	rm bt-server
