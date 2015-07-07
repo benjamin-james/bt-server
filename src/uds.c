@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "uds.h"
-int uds_server(const char *sock_name, void (*on_connection)(int fd))
+int uds_server(const char *sock_name, void (*on_connection)(int fd, void *copy_data, size_t size), void *copy_data, size_t copy_size)
 {
 	struct sockaddr_un addr;
 	int sock, conn;
@@ -31,7 +31,7 @@ int uds_server(const char *sock_name, void (*on_connection)(int fd))
 	while ((conn = accept(sock, (struct sockaddr *) &addr, &addr_len)) > -1) {
 		child = fork();
 		if (child == 0) {
-			on_connection(conn);
+			on_connection(conn, copy_data, copy_size);
 			exit(EXIT_SUCCESS);
 		}
 		close(conn);
@@ -44,7 +44,7 @@ int uds_set_addr(struct sockaddr_un *addr, const char *sock_name)
 {
 	memset(addr, 0, sizeof(*addr));
 	addr->sun_family = AF_UNIX;
-	sprintf(addr->sun_path,"%s", sock_name);
+	strcpy(addr->sun_path, sock_name);
 	return 0;
 }
 int uds_client_connect(const char *sock_name)
@@ -56,7 +56,7 @@ int uds_client_connect(const char *sock_name)
 		return -1;
 	}
 	uds_set_addr(&addr, sock_name);
-	if (connect(sock, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) != 0) {
+	if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) != 0) {
 		perror("connect failed");
 		return -1;
 	}
@@ -92,29 +92,29 @@ int recv_fd(int sock)
 	return -1;
 }
 
-int send_fd(int sock, int fd)
-{
-	struct msghdr sock_msg;
-	struct iovec io_vector[1];
-	struct cmsghdr *control_msg = NULL;
-	char msg_buffer[1];
-	char ancillary_element_buffer[CMSG_SPACE(sizeof(int))];
-	int cmsg_space;
-	*msg_buffer = 'F';
-	io_vector->iov_base = msg_buffer;
-	io_vector->iov_len = 1;
-	memset(&sock_msg, 0, sizeof(sock_msg));
-	sock_msg.msg_iov = io_vector;
-	sock_msg.msg_iovlen = 1;
-	cmsg_space = CMSG_SPACE(sizeof(int));
-	memset(ancillary_element_buffer, 0, cmsg_space);
-	sock_msg.msg_control = ancillary_element_buffer;
-	sock_msg.msg_controllen = cmsg_space;
+	int send_fd(int sock, int fd)
+	{
+		struct msghdr sock_msg;
+		struct iovec io_vector[1];
+		struct cmsghdr *control_msg = NULL;
+		char msg_buffer[1];
+		char ancillary_element_buffer[CMSG_SPACE(sizeof(int))];
+		int cmsg_space;
+		*msg_buffer = 'F';
+		io_vector->iov_base = msg_buffer;
+		io_vector->iov_len = 1;
+		memset(&sock_msg, 0, sizeof(sock_msg));
+		sock_msg.msg_iov = io_vector;
+		sock_msg.msg_iovlen = 1;
+		cmsg_space = CMSG_SPACE(sizeof(int));
+		memset(ancillary_element_buffer, 0, cmsg_space);
+		sock_msg.msg_control = ancillary_element_buffer;
+		sock_msg.msg_controllen = cmsg_space;
 
-	control_msg = CMSG_FIRSTHDR(&sock_msg);
-	control_msg->cmsg_level = SOL_SOCKET;
-	control_msg->cmsg_type = SCM_RIGHTS;
-	control_msg->cmsg_len = CMSG_LEN(sizeof(int));
-	memcpy(CMSG_DATA(control_msg), &fd, sizeof(fd));
+		control_msg = CMSG_FIRSTHDR(&sock_msg);
+		control_msg->cmsg_level = SOL_SOCKET;
+		control_msg->cmsg_type = SCM_RIGHTS;
+		control_msg->cmsg_len = CMSG_LEN(sizeof(int));
+		memcpy(CMSG_DATA(control_msg), &fd, sizeof(fd));
 	return sendmsg(sock, &sock_msg, 0);
 }

@@ -11,12 +11,11 @@
 int main(int argc, char **argv)
 {
 	struct sockaddr_un addr;
-	int  sock, num;
+	int  sock;
 	char *input, buffer[256];
-
 	if (argc < 2) {
 		printf("Usage: %s [program]\n", *argv);
-	        return 0;
+		return 0;
 	}
 	sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
@@ -41,12 +40,14 @@ int main(int argc, char **argv)
 		if (!input || !strcmp(input, "exit"))
 			break;
 		add_history(input);
-		send(sock, input, strlen(input), 0);
+		send(sock, input, strlen(input)+1, 0);
 		free(input);
 
-		num = recv(sock, buffer, sizeof(buffer), 0);
-		buffer[num] = 0;
-		printf("%s\n", buffer);
+		/*
+		  num = recv(sock, buffer, sizeof(buffer), 0);
+		  buffer[num] = 0;
+		  printf("%s\n", buffer);
+		*/
 	}
 	close(sock);
 	return 0;

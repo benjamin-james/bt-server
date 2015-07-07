@@ -9,18 +9,19 @@
 #include "uds.h"
 
 int bt_connect(const char *addr);
-void handle_client(int sock);
+void handle_client(int sock, void *data, size_t size);
 
 #define SOCK_NAME "./bluetooth_sock"
 int main(void)
 {
-	return uds_server(SOCK_NAME, handle_client);
+	return uds_server(SOCK_NAME, handle_client, NULL, 0);
 }
 
-void handle_client(int uds)
+void handle_client(int uds, void *data, size_t datasize)
 {
 	char buffer[256];
 	int bts, num = recv(uds, buffer, sizeof(buffer), 0);
+	printf("data: %p size: %lu\n", data, datasize);
 	buffer[num] = 0;
 	bts = bt_connect(buffer);
 	if (bts >= 0)
