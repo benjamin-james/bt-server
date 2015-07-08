@@ -13,7 +13,7 @@
 int bt_connect(const char *addr);
 void handle_client(int sock, void *data, size_t size);
 
-#define SOCK_NAME "./bluetooth_sock"
+#define SOCK_NAME "./sock-bluetooth"
 
 void sighandler(void)
 {
@@ -33,15 +33,15 @@ int main(int argc, char **argv)
 void handle_client(int uds, void *data, size_t datasize)
 {
 	char buffer[256];
-	int bts, num;
+	int bts;
+	ssize_t num;
 	memcpy(buffer, data, datasize);
 	bts = bt_connect(buffer);
-	if (bts >= 0)
-		sprintf(buffer, "connected\n");
-	else {
-		sprintf(buffer, "error\n");
+	if (bts < 0) {
+		perror("uh oh");
 		close(bts);
-		return;
+		close(uds);
+		exit(EXIT_FAILURE);
 	}
 	while ((num = recv(uds, buffer, sizeof(buffer), 0)) >= 0)
 		send(bts, buffer, num, 0);
