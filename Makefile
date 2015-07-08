@@ -1,6 +1,6 @@
 
 CC = cc
-CFLAGS = -W -Wall -Werror
+CFLAGS = -W -Wall -Werror -g -O2
 
 all: tls-server btd server client bt-server tcp-server tcp-client gui-server
 
@@ -13,7 +13,7 @@ tcp-client: src/tcp-client.c uds.o tcp.o
 bt-server: src/bt-server.c
 	$(CC) $(CFLAGS) src/bt-server.c -o bt-server -lbluetooth
 tls-server: src/tls-server.c uds.o
-	$(CC) src/tls-server.c uds.o -o tls-server -lssl -lcrypto
+	$(CC) $(CFLAGS) src/tls-server.c uds.o -o tls-server -lssl -lcrypto
 btd: src/btd.c uds.o
 	$(CC) $(CFLAGS) uds.o src/btd.c -o btd -lbluetooth
 server: src/server.c uds.o

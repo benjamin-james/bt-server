@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "uds.h"
+
 int uds_server(const char *sock_name, void (*on_connection)(int fd, void *copy_data, size_t size), void *copy_data, size_t copy_size)
 {
 	struct sockaddr_un addr;
@@ -63,7 +64,7 @@ int uds_client_connect(const char *sock_name)
 	return sock;
 }
 
-int recv_fd(int sock)
+/*int recv_fd(int sock)
 {
 	struct msghdr sock_msg;
 	struct iovec io_vector[1];
@@ -92,29 +93,30 @@ int recv_fd(int sock)
 	return -1;
 }
 
-	int send_fd(int sock, int fd)
-	{
-		struct msghdr sock_msg;
-		struct iovec io_vector[1];
-		struct cmsghdr *control_msg = NULL;
-		char msg_buffer[1];
-		char ancillary_element_buffer[CMSG_SPACE(sizeof(int))];
-		int cmsg_space;
-		*msg_buffer = 'F';
-		io_vector->iov_base = msg_buffer;
-		io_vector->iov_len = 1;
-		memset(&sock_msg, 0, sizeof(sock_msg));
-		sock_msg.msg_iov = io_vector;
-		sock_msg.msg_iovlen = 1;
-		cmsg_space = CMSG_SPACE(sizeof(int));
-		memset(ancillary_element_buffer, 0, cmsg_space);
-		sock_msg.msg_control = ancillary_element_buffer;
-		sock_msg.msg_controllen = cmsg_space;
+int send_fd(int sock, int fd)
+{
+	struct msghdr sock_msg;
+	struct iovec io_vector[1];
+	struct cmsghdr *control_msg = NULL;
+	char msg_buffer[1];
+	char ancillary_element_buffer[CMSG_SPACE(sizeof(int))];
+	int cmsg_space;
+	*msg_buffer = 'F';
+	io_vector->iov_base = msg_buffer;
+	io_vector->iov_len = 1;
+	memset(&sock_msg, 0, sizeof(sock_msg));
+	sock_msg.msg_iov = io_vector;
+	sock_msg.msg_iovlen = 1;
+	cmsg_space = CMSG_SPACE(sizeof(int));
+	memset(ancillary_element_buffer, 0, cmsg_space);
+	sock_msg.msg_control = ancillary_element_buffer;
+	sock_msg.msg_controllen = cmsg_space;
 
-		control_msg = CMSG_FIRSTHDR(&sock_msg);
-		control_msg->cmsg_level = SOL_SOCKET;
-		control_msg->cmsg_type = SCM_RIGHTS;
-		control_msg->cmsg_len = CMSG_LEN(sizeof(int));
-		memcpy(CMSG_DATA(control_msg), &fd, sizeof(fd));
+	control_msg = CMSG_FIRSTHDR(&sock_msg);
+	control_msg->cmsg_level = SOL_SOCKET;
+	control_msg->cmsg_type = SCM_RIGHTS;
+	control_msg->cmsg_len = CMSG_LEN(sizeof(int));
+	memcpy(CMSG_DATA(control_msg), &fd, sizeof(fd));
 	return sendmsg(sock, &sock_msg, 0);
 }
+*/

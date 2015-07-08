@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@
 void sighandler(void)
 {
 	unlink(SOCK_NAME);
+	exit(EXIT_SUCCESS);
 }
 void connection_handler(int udpsock, void *data, size_t size)
 {
@@ -37,5 +39,5 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	signal(SIGINT, (void *)sighandler);
-		return uds_server(SOCK_NAME, connection_handler, argv[1], strlen(argv[1]) + 1);
-		}
+	return uds_server(SOCK_NAME, connection_handler, argv[1], strlen(argv[1]) + 1);
+}

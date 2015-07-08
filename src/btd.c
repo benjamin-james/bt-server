@@ -1,4 +1,6 @@
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -12,17 +14,27 @@ int bt_connect(const char *addr);
 void handle_client(int sock, void *data, size_t size);
 
 #define SOCK_NAME "./bluetooth_sock"
-int main(void)
+
+void sighandler(void)
 {
-	return uds_server(SOCK_NAME, handle_client, NULL, 0);
+	unlink(SOCK_NAME);
+	exit(EXIT_SUCCESS);
+}
+int main(int argc, char **argv)
+{
+	if (argc < 2) {
+		printf("Usage: %s [address]\n", *argv);
+		return 0;
+	}
+	signal(SIGINT, (void *)sighandler);
+	return uds_server(SOCK_NAME, handle_client, argv[1], strlen(argv[1]) + 1);
 }
 
 void handle_client(int uds, void *data, size_t datasize)
 {
 	char buffer[256];
-	int bts, num = recv(uds, buffer, sizeof(buffer), 0);
-	printf("data: %p size: %lu\n", data, datasize);
-	buffer[num] = 0;
+	int bts, num;
+	memcpy(buffer, data, datasize);
 	bts = bt_connect(buffer);
 	if (bts >= 0)
 		sprintf(buffer, "connected\n");
@@ -31,19 +43,8 @@ void handle_client(int uds, void *data, size_t datasize)
 		close(bts);
 		return;
 	}
-	send(uds, buffer, strlen(buffer), 0);
-	while (1) {
-		if ((num = recv(uds, buffer, sizeof(buffer), 0)) <= 0) {
-			shutdown(bts, SHUT_WR);
-			break;
-		}
+	while ((num = recv(uds, buffer, sizeof(buffer), 0)) >= 0)
 		send(bts, buffer, num, 0);
-		if ((num = recv(bts, buffer, sizeof(buffer), 0)) <= 0) {
-			shutdown(uds, SHUT_WR);
-			break;
-		}
-		send(uds, buffer, num, 0);
-	}
 	close(bts);
 	close(uds);
 }
