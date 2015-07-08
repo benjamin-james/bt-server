@@ -6,51 +6,28 @@
 #include <unistd.h>
 
 #include "uds.h"
+#include "tcp.h"
 
 #define MAX_CLIENTS 32
 
-void on_connection(int sock, int udssock)
+void handler(int sock, void *data, size_t size)
 {
 	char buffer[256];
+	int udssock;
 	ssize_t len;
-	printf("connected from %d to %d\n", sock, udssock);
+	memcpy(buffer, data, size);
+	udssock = uds_client_connect(buffer);
 	while ((len = recv(sock, buffer, sizeof(buffer), 0)) >= 0) {
-		printf("message: %s\n", buffer);
 		send(udssock, buffer, len, 0);
 	}
-	printf("disconnected to %d\n", sock);
 	close(udssock);
 }
 int main(int argc, char **argv)
 {
-	int list, sock;
-	struct sockaddr_in servaddr, cliaddr;
-	socklen_t clilen;
-	/*pid_t pid;*/
-	if (argc < 3) {
+	if (argc < 3 || sscanf(argv[1], "%d", &argc) != 1 || access(argv[2], F_OK) == -1) {
 		printf("Usage: %s [port] [sock name]\n", *argv);
 		return 0;
 	}
-	list = socket(AF_INET, SOCK_STREAM, 0);
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
-	servaddr.sin_port=htons(atoi(argv[1]));
-	bind(list, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	listen(list, MAX_CLIENTS);
-
-	while (1) {
-		int udssock;
-		clilen = sizeof(cliaddr);
-		sock = accept(list, (struct sockaddr *)&cliaddr, &clilen);
-
-		/*		if ((pid = fork()) == 0) {
-				close(list);*/
-		udssock = uds_client_connect(argv[2]);
-		on_connection(sock, udssock);
-		/*		exit(EXIT_SUCCESS);*/
-		/*}*/
-		close(sock);
-	}
+	tcp_server(argv[1], 10, handler, argv[2], strlen(argv[2]) + 1);
 	return 0;
 }

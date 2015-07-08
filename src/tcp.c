@@ -11,14 +11,16 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-int tcp_getaddrinfo(struct addrinfo *info, const char *portstr)
+#include "tcp.h"
+
+int tcp_getaddrinfo(struct addrinfo **info, const char *portstr)
 {
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	return getaddrinfo(NULL, portstr, &hints, &info);
+	return getaddrinfo(NULL, portstr, &hints, info);
 }
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -26,7 +28,7 @@ void *get_in_addr(struct sockaddr *sa)
 		return &(((struct sockaddr_in*)sa)->sin_addr);
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
-void sigchld_handler(int s)
+void sigchld_handler(void)
 {
 	while(waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -58,20 +60,20 @@ int tcp_client(const char *hostname, const char *port)
 		fprintf(stderr, "client: failed to connect\n");
 		return -1;
 	}
-
-
-
-	return 0;
+	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
+	printf("client: connecting to %s\n", s);
+	freeaddrinfo(info);
+	return sock;
 }
-void tcp_server(const char *port, int backlog, void (*func)(int sock))
+void tcp_server(const char *port, int backlog, void (*func)(int sock, void *data, size_t size), void *data, size_t size)
 {
 	struct addrinfo *info, *p;
 	struct sockaddr_storage their_addr;
 	socklen_t sin_size;
 	struct sigaction sa;
-	int sock, newsock, rv = tcp_getaddrinfo(info, port);
-	int yes = 1;
+	int sock, newsock, yes = 1;
 	char s[INET6_ADDRSTRLEN];
+	tcp_getaddrinfo(&info, port);
 	for (p = info; p != NULL; p = p->ai_next) {
 		if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("server: socket");
@@ -97,7 +99,7 @@ void tcp_server(const char *port, int backlog, void (*func)(int sock))
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
-	sa.sa_handler = sigchld_handler;
+	sa.sa_handler = (void *)sigchld_handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
@@ -115,7 +117,7 @@ void tcp_server(const char *port, int backlog, void (*func)(int sock))
 		printf("server: got connection from %s\n", s);
 		if (!fork()) {
 			close(sock);
-			func(newsock);
+			func(newsock, data, size);
 			close(newsock);
 			exit(EXIT_SUCCESS);
 		}

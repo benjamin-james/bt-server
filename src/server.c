@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "uds.h"
-#define SOCK_NAME "./demo_socket"
+#define SOCK_NAME "./sock-server"
 void connection_handler(int sock, void *data, size_t datasize)
 {
 	char buffer[256];
