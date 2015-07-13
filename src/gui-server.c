@@ -1,3 +1,4 @@
+#include <float.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -5,18 +6,45 @@
 #include "input.h"
 #include "uds.h"
 
+#ifndef max
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef rmax
+#define rmax(a, b) max(max(a, -a), max(b, -b))
+#endif
+
 void print_double(char *buf, double d, char **ret)
 {
 	memcpy(buf, &d, sizeof(d));
 	*ret = buf + sizeof(d);
 }
+void convert(double x, double y, double *a, double *b)
+{
+	double r,d;
+	if (x*x + y*y <= DBL_EPSILON) {
+		*a = 0;
+		*b = 0;
+		return;
+	}
+	r = rmax(x, y);
+	d = (y*y - x*x) / (y*y + x*x);
+	if (y < 0.0) {
+		r = -d;
+		d = -rmax(x, y);
+	}
+	if (x >= 0.0) {
+		*a = r;
+		*b = d;
+	} else {
+		*a = d;
+		*b = r;
+	}
+}
 int print_input(char *buf, struct input *in)
 {
-	char *ptr = buf;
-	print_double(ptr, in->x, &ptr);
-	print_double(ptr, in->y, &ptr);
-	print_double(ptr, in->throttle, &ptr);
-	return ptr - buf;
+	double a, b;
+	convert(in->x, in->y, &a, &b);
+	return sprintf(buf, "%f %f\n", a, b);
 }
 
 int main(int argc, char **argv)
